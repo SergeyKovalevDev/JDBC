@@ -54,11 +54,24 @@ Spring DataSource Configuration
 Next step is to create spring configuration class to define DataSource bean. I am using java based configuration, you can also do this using spring bean configuration xml file.
 —ледующий шаг - создать класс конфигурации spring дл€ определени€ компонента источника данных. я использую конфигурацию на основе java, вы также можете сделать это с помощью xml-файла конфигурации spring bean.
 
-я прописал конфигурацию в application.properties
-	spring.datasource.driver-class-name=org.postgresql.Driver
-	spring.datasource.url=jdbc:postgresql://localhost:5432/SpringJDBCTemplate
-	spring.datasource.username=postgres
-	spring.datasource.password=usb19pgs80
+я создал пакет spring.config и в нем класс AppConfig
+
+@Configuration Ц says that this class is configuration for Spring context.
+@Configuration Ц указывает, что этот класс €вл€етс€ конфигурацией дл€ контекста Spring.
+
+@ComponentScan(Уcom.journaldev.springФ)- specifies the package to scan for component classes.
+@ComponentScan(Уcom.journaldev.springФ) - указывает пакет дл€ сканировани€ на наличие классов компонентов.
+
+@PropertySource(Уclasspath:database.propertiesФ)- says that properties will be read from database.properties file.
+@PropertySource(Упуть к классу:database.propertiesФ) - указывает, что свойства будут считаны из файла database.properties.
+
+Content of database.properties file is shown below.
+—одержимое файла database.properties показано ниже.
+
+	driver=org.postgresql.Driver
+	url=jdbc:postgresql://127.0.0.1:5432/school
+	dbuser=postgres
+	dbpassword=postgres
 
 Spring JDBC Model Classes
 
