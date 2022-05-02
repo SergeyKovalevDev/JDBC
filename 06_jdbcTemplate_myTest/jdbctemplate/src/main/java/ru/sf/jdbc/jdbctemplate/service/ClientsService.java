@@ -13,7 +13,6 @@ import java.util.Optional;
 public class ClientsService {
 
     private final ClientsRepository clientsRepository;
-    private final ClientsSession clientsSession;
 
     public Clients getById(Long id) {
         Optional<Clients> optionalClients = clientsRepository.findById(id);
@@ -26,8 +25,7 @@ public class ClientsService {
     }
 
     public Clients updateClients(Clients client) {
-//        clientsRepository.
-        clientsSession.saveOrUpdate(client);
+        clientsRepository.save(client);
         return null;
     }
 
