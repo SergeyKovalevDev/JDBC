@@ -1,0 +1,90 @@
+https://www.journaldev.com/17053/spring-jdbctemplate-example
+Spring JdbcTemplate
+
+JDBC produces a lot of boiler plate code, such as opening/closing a connection to a database, handling sql exceptions etc. It makes the code extremely cumbersome and difficult to read.
+JDBC создает много шаблонного кода, такого как открытие / закрытие соединения с базой данных, обработка исключений sql и т.д. Это делает код чрезвычайно громоздким и трудным для чтения.
+
+Implementing JDBC in the Spring Framework takes care of working with many low-level operations (opening/closing connections, executing SQL queries, etc.).
+Реализация JDBC в Spring Framework обеспечивает работу со многими низкоуровневыми операциями (открытие / закрытие соединений, выполнение SQL-запросов и т.д.).
+
+Thanks to this, when working with the database in the Spring Framework, we only need to define the connection parameters from the database and register the SQL query, the rest of the work for us is performed by Spring.
+Благодаря этому при работе с базой данных в Spring Framework нам нужно только определить параметры подключения из базы данных и зарегистрировать SQL-запрос, остальную работу за нас выполняет Spring.
+
+JDBC in Spring has several classes (several approaches) for interacting with the database. The most common of these is using the JdbcTemplate class. This is the base class that manages the processing of all events and database connections.
+JDBC в Spring имеет несколько классов (несколько подходов) для взаимодействия с базой данных. Наиболее распространенным из них является использование класса JdbcTemplate. Это базовый класс, который управляет обработкой всех событий и подключений к базе данных.
+
+The JdbcTemplate class executes SQL queries, iterates over the ResultSet, and retrieves the called values, updates the instructions and procedure calls, “catches” the exceptions, and translates them into the exceptions defined in the org.springframwork.dao package.
+Класс JdbcTemplate выполняет SQL-запросы, выполняет итерацию по набору результатов и извлекает вызываемые значения, обновляет инструкции и вызовы процедур, “улавливает” исключения и преобразует их в исключения, определенные в пакете org.springframwork.dao.
+
+Instances of the JdbcTemplate class are thread-safe. This means that by configuring a single instance of the JdbcTemplate class, we can then use it for several DAO objects.
+Экземпляры класса JdbcTemplate являются потокобезопасными. Это означает, что, настроив один экземпляр класса JdbcTemplate, мы можем затем использовать его для нескольких объектов DAO.
+
+When using JdbcTemplate, most often, it is configured in the Spring configuration file. After that, it is implemented using bean in DAO classes.
+При использовании JdbcTemplate, чаще всего, он настраивается в файле конфигурации Spring. После этого он реализуется с помощью bean в классах DAO.
+
+Spring JdbcTemplate Example
+
+Let’s look at Spring JdbcTemplate example program. I am using Postgresql database here, but you can use any other relational database too, such as MySQL and Oracle. All you need is to change the database configurations and it should work.
+Давайте посмотрим на пример программы Spring JdbcTemplate. Я использую здесь базу данных Postgresql, но вы также можете использовать любую другую реляционную базу данных, такую как MySQL и Oracle. Все, что вам нужно, это изменить конфигурацию базы данных, и это должно сработать.
+
+First of all we need some sample data to work on. Below SQL queries will create a table and populate it with some data for us to use.
+Прежде всего, нам нужны некоторые образцы данных для работы. Приведенные ниже SQL-запросы создадут таблицу и заполнят ее некоторыми данными для нашего использования.
+
+	create table people (
+	id serial not null primary key,
+	first_name varchar(20) not null,
+	last_name varchar(20) not null,
+	age integer not null
+	);
+	
+	insert into people (id, first_name, last_name, age) values
+	(1, 'Vlad', 'Boyarskiy', 21),
+	(2,'Oksi', ' Bahatskaya', 30),
+	(3,'Vadim', ' Vadimich', 32);
+
+Spring JDBC Maven Dependencies
+
+We need following dependencies – spring-core, spring-context, spring-jdbc and postgresql. If you are using any other relational database such as MySQL, then add it’s corresponding java driver dependencies.
+Нам нужны следующие зависимости – spring-core, spring-context, spring-jdbc и postgresql. Если вы используете любую другую реляционную базу данных, такую как MySQL, добавьте соответствующие зависимости драйвера java.
+
+Я использовал spring initializr с зависимостью Spring Data JDBC и postgresql
+
+Spring DataSource Configuration
+
+Next step is to create spring configuration class to define DataSource bean. I am using java based configuration, you can also do this using spring bean configuration xml file.
+Следующий шаг - создать класс конфигурации spring для определения компонента источника данных. Я использую конфигурацию на основе java, вы также можете сделать это с помощью xml-файла конфигурации spring bean.
+
+Я прописал конфигурацию в application.properties
+	spring.datasource.driver-class-name=org.postgresql.Driver
+	spring.datasource.url=jdbc:postgresql://localhost:5432/SpringJDBCTemplate
+	spring.datasource.username=postgres
+	spring.datasource.password=usb19pgs80
+
+Spring JDBC Model Classes
+
+Next step is to create model classes to map our database table.
+Следующим шагом будет создание классов моделей для сопоставления нашей таблицы базы данных.
+
+Я создал пакет etity и в нем класс Person
+
+For fetching data from database we need to implement interface RowMapper. This interface has only one method mapRow(ResultSet resultSet, int i), which will return one instance of our model class (i.e. Person).
+Для извлечения данных из базы данных нам необходимо реализовать интерфейс RowMapper. Этот интерфейс имеет только один метод mapRow(ResultSet ResultSet, int i), который вернет один экземпляр нашего модельного класса (т.е. Person).
+
+Я создал в пакете entity класс PersonMapper
+
+Spring JDBC DAO Classes
+
+Final step is to create DAO classes to map our model class to database table using sql queries. We will also configure DataSource using @Autowired annotation and expose some APIs.
+Последним шагом является создание классов DAO для сопоставления нашего класса модели с таблицей базы данных с помощью sql-запросов. Мы также настроим источник данных с помощью аннотации @Autowired и представим некоторые API.
+
+PersonDAOImpl class is annotated with @Component annotation and in this class we have field with type JdbcTemplate.
+Класс PersonDAOImpl аннотируется аннотацией @Component, и в этом классе у нас есть поле с типом JdbcTemplate.
+
+When constructor of this class will be invoked, an instance of DataSource will be injected into it and we can create an instance of JdbcTemplate. After that we can use in in our methods.
+Когда будет вызван конструктор этого класса, в него будет введен экземпляр DataSource, и мы сможем создать экземпляр JdbcTemplate. После этого мы можем использовать в наших методах.
+
+Spring JdbcTemplate Test Program
+
+Our Spring JdbcTemplate example project is ready, let’s test this with a test class.
+Наш примерный проект Spring JdbcTemplate готов, давайте протестируем его с помощью тестового класса.
+
