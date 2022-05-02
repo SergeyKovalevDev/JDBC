@@ -1,0 +1,167 @@
+ 
+ 1. Создаем проект в idea с параметрами
+	name: OnlyJdbcUsageProject
+	Language: Java
+	Build system: Maven
+	JDK: 1.8
+	GroupId: ru.sf
+	ArtifactId: OnlyJdbcUsageProject
+
+ 2. Добавляем в pom.xml зависимость - драйвер БД
+	<!-- https://mvnrepository.com/artifact/org.postgresql/postgresql -->
+	<dependency>
+	    <groupId>org.postgresql</groupId>
+	    <artifactId>postgresql</artifactId>
+	    <version>42.3.4</version>
+	</dependency>
+
+ 3. В папке resources создаем файл db.properties
+	DB_URL=jdbc:postgresql://localhost:5432/module18
+	DB_USER=postgres
+	DB_PASSWORD=usb19pgs80
+
+ 4. Создаем класс Settings. У него есть методы для загрузки параметров из файлов
+	import java.io.IOException;
+	import java.io.InputStream;
+	import java.util.Properties;
+	
+	public class Settings {
+	
+	    private final Properties properties = new Properties();
+	
+	    public void load(InputStream load) {
+	        try {
+	            this.properties.load(load);
+	        } catch (IOException ioe) {
+	            ioe.printStackTrace();
+	        }
+	    }
+	
+	    public String getProperty(String key) {
+	        return this.properties.getProperty(key);
+	    }
+	}
+
+ 5. Создаем класс JdbcTest
+	import java.sql.*;
+	
+	public class JdbcTest {
+	    private final Settings settings;
+	    private String dbUrl;
+	    private String dbUser;
+	    private String dbPassword;
+	
+	    public JdbcTest() {
+	        settings = new Settings();
+	        this.init();
+	    }
+	
+	    private void init() {
+	        settings.load(Settings.class.getClassLoader().getResourceAsStream("db.properties"));
+	        this.dbUrl = this.settings.getProperty("DB_URL");
+	        this.dbUser = this.settings.getProperty("DB_USER");
+	        this.dbPassword = this.settings.getProperty("DB_PASSWORD");
+	    }
+	
+	    public boolean testConnection() {
+	        try (Connection connection = DriverManager.getConnection(this.dbUrl, this.dbUser, this.dbPassword)) {
+	            return true;
+	        } catch (SQLException e) {
+	            return false;
+	        }
+	    }
+	
+	    public boolean createItemTable() {
+	        try (Connection connection = DriverManager.getConnection(this.dbUrl, this.dbUser, this.dbPassword);
+	        Statement statement = connection.createStatement()) {
+	            statement.executeUpdate(
+	                        "CREATE TABLE IF NOT EXISTS items (" +
+	                        "id serial," +
+	                        "item_name varchar(200)," +
+	                        "description varchar(2000)," +
+	                        "create_time timestamp default now()," +
+	                        "PRIMARY KEY (id))");
+	            return true;
+	        } catch (SQLException e) {
+	            return false;
+	        }
+	    }
+	
+	    public boolean dropItemTable() {
+	        try (Connection connection = DriverManager.getConnection(this.dbUrl, this.dbUser, this.dbPassword);
+	             Statement statement = connection.createStatement()) {
+	            statement.executeUpdate("DROP TABLE IF EXISTS items CASCADE");
+	            return true;
+	        } catch (SQLException e) {
+	            return false;
+	        }
+	    }
+	
+	    public int insertIntoItems() {
+	        try (Connection connection = DriverManager.getConnection(this.dbUrl, this.dbUser, this.dbPassword);
+	             Statement statement = connection.createStatement()) {
+	            return statement.executeUpdate("INSERT INTO items (item_name, description) VALUES ('tvset', 'the best tvset')");
+	        } catch (SQLException e) {
+	            return -1;
+	        }
+	    }
+	
+	    public boolean selectFromItems() {
+	        ResultSet resultSet;
+	        try (Connection connection = DriverManager.getConnection(this.dbUrl, this.dbUser, this.dbPassword);
+	             Statement statement = connection.createStatement()) {
+	            String sqlQuery = "SELECT * FROM items WHERE item_name = 'tvset'";
+	            if (statement.execute(sqlQuery)) {
+	                resultSet = statement.executeQuery(sqlQuery);
+	                while (resultSet.next()) {
+	                    System.out.print(resultSet.getInt("id") + "\t");
+	                    System.out.print(resultSet.getString("item_name") + "\t");
+	                    System.out.print(resultSet.getString("description") + "\t");
+	                    System.out.println(resultSet.getTimestamp("create_time"));
+	                }
+	                return true;
+	            } else {
+	                return false;
+	            }
+	        } catch (SQLException e) {
+	            return false;
+	        }
+	    }
+
+	// Метод Statement складывает строки значений и строки запроса.
+	// А вот PreparedStatement имеет по сути шаблон запроса, и данные в него вставляются с учётом кавычек. 
+	// Данный метод позволяет защититься от SQL инъекций.
+	    public boolean preparedStatementSelectFromItems(int id) {        
+	        String sqlQuery = "SELECT * FROM items WHERE id = ?";
+	        try (Connection connection = DriverManager.getConnection(this.dbUrl, this.dbUser, this.dbPassword);
+	             PreparedStatement preparedStatement = connection.prepareStatement(sqlQuery)) {
+	            preparedStatement.setInt(1, id);
+	            ResultSet resultSet = preparedStatement.executeQuery();
+	            while (resultSet.next()) {
+	                System.out.print(resultSet.getInt("id") + "\t");
+	                System.out.print(resultSet.getString("item_name") + "\t");
+	                System.out.print(resultSet.getString("description") + "\t");
+	                System.out.println(resultSet.getTimestamp("create_time"));
+	            }
+	            return true;
+	        } catch (SQLException e) {
+	            return false;
+	        }
+	    }
+	
+	    public static void main(String[] args) throws SQLException {
+	        JdbcTest jdbcTest = new JdbcTest();
+	        System.out.println(jdbcTest.testConnection() ? "Connection OK" : "Connection error");
+	//        System.out.println(jdbcTest.createItemTable() ? "Table created" : "Table creating error");
+	//        System.out.println(jdbcTest.dropItemTable() ? "Table dropped" : "Table dropping error");
+	//        int rows = jdbcTest.insertIntoItems();
+	//        System.out.println(rows == -1 ? "Insert error" : rows + " rows changed");
+	        System.out.println(jdbcTest.selectFromItems() ? "Query OK" : "Query error");
+        	System.out.println(jdbcTest.preparedStatementSelectFromItems(2) ? "Prepared query OK" : "Prepared query error");
+		    }
+	}
+	
+	
+
+
+	

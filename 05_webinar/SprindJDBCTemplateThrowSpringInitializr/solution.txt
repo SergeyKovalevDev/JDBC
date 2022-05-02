@@ -1,0 +1,442 @@
+ 
+ 1. Создаем проект через start.spring.io с параметрами
+	- Maven Project
+	- Java
+	- 2.6.7
+	- ru.sf.jdbc
+	- jdbctemplate
+	- jar
+	- 8
+	- Spring Web
+	- Spring Data JDBC
+	- Spring Data JPA
+	- Lombok
+
+ 2. Добавляемм пакеты
+	- controllers
+	- entity
+	- repository
+	- service
+
+ 3. В пакете entity создаем класс Users
+	package ru.sf.jdbc.jdbctemplate.entity;
+	
+	import lombok.Getter;
+	import lombok.Setter;
+	
+	import javax.persistence.*;
+	
+	@Table(name = "users")
+	@Entity
+	@Getter
+	@Setter
+	public class Users {
+	
+	    @Id
+	    @Column(name = "id")
+	    private Long id;
+	
+	    @Column(name = "username")
+	    private String username;
+	
+	    @Column(name = "email")
+	    private String email;
+	
+	    @Column(name = "experience")
+	    private Long experience;
+	}
+
+ 4. В пакете entity создаем класс Repository
+	package ru.sf.jdbc.jdbctemplate.entity;
+	
+	import lombok.Getter;
+	import lombok.Setter;
+	
+	import javax.persistence.*;
+	
+	@Table(name = "repository")
+	@Entity
+	@Getter
+	@Setter
+	public class Repository {
+	
+	    @Id
+	    @Column(name = "id")
+	    private Long id;
+	
+	    @Column(name = "title")
+	    private String title;
+	
+	    @Column(name = "description")
+	    private String description;
+	
+	    @Column(name = "code")
+	    private String code;
+	
+	    @JoinColumn(name = "user_id")
+	    private Integer user_id;
+	}
+
+ 5. В пакете entity создаем класс UsersDto
+	package ru.sf.jdbc.jdbctemplate.entity;
+		
+	import lombok.Getter;
+	import lombok.Setter;
+	
+	import java.util.List;
+	
+	@Getter
+	@Setter
+	public class UserDto {
+	
+	    private Long id;
+	    private String username;
+	    private String email;
+	    private Long experience;
+	    private List<Repository> repositories;
+	}
+
+
+ 6. В пакете repository создаем интерфейс UsersRepository
+	package ru.sf.jdbc.jdbctemplate.repository;
+	
+	import org.springframework.data.jpa.repository.JpaRepository;
+	import org.springframework.stereotype.Repository;
+	import ru.sf.jdbc.jdbctemplate.entity.Users;
+	
+	@Repository
+	public interface UsersRepository extends JpaRepository<Users, Long> {
+	}
+
+ 7. В пакете repository создаем интерфейс RepoRepository
+	package ru.sf.jdbc.jdbctemplate.repository;
+	
+	import org.springframework.data.jpa.repository.JpaRepository;
+	import ru.sf.jdbc.jdbctemplate.entity.Repository;
+	
+	@org.springframework.stereotype.Repository
+	public interface RepoRepository extends JpaRepository<Repository, Long> {
+	}
+
+ 8. В пакете service создаем класс RepoService
+	package ru.sf.jdbc.jdbctemplate.service;
+	
+	import lombok.RequiredArgsConstructor;
+	import org.springframework.stereotype.Service;
+	import ru.sf.jdbc.jdbctemplate.entity.Repository;
+	import ru.sf.jdbc.jdbctemplate.repository.RepoRepository;
+	
+	@Service
+	@RequiredArgsConstructor
+	public class RepoService {
+	
+	    private final RepoRepository repository;
+	
+	    public void save(Repository repository) {
+	        this.repository.save(repository);
+	    }
+	    public void edit(Repository repository) {
+	        this.repository.save(repository);
+	    }
+	    public Repository getById(Long id) {
+	        return this.repository.getById(id);
+	    }
+	    public void delete(Repository repository) {
+	        this.repository.delete(repository);
+	    }
+	}
+
+ 9. В пакете service слздаем класс UsersService
+	package ru.sf.jdbc.jdbctemplate.service;
+	
+	import lombok.RequiredArgsConstructor;
+	import org.springframework.jdbc.core.JdbcTemplate;
+	import org.springframework.jdbc.core.RowMapper;
+	import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+	import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+	import org.springframework.stereotype.Service;
+	import ru.sf.jdbc.jdbctemplate.entity.UserDto;
+	import ru.sf.jdbc.jdbctemplate.entity.Repository;
+	import ru.sf.jdbc.jdbctemplate.entity.Users;
+	import ru.sf.jdbc.jdbctemplate.repository.UsersRepository;
+	
+	import java.sql.ResultSet;
+	import java.sql.SQLException;
+	import java.util.ArrayList;
+	import java.util.List;
+	import java.util.Map;
+	import java.util.Optional;
+	
+	@Service
+	@RequiredArgsConstructor
+	public class UserService {
+	
+	    private final UsersRepository usersRepository;
+	    private final JdbcTemplate jdbcTemplate;
+	    private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+	
+	    public void save(Users users) {
+	        this.usersRepository.save(users);
+	    }
+	
+	    public void edit(Users users) {
+	        this.usersRepository.save(users);
+	    }
+	
+	    public UserDto getById(Long id) {
+	        Optional<Users> users = this.usersRepository.findById(id);
+	        if (users.isPresent()) {
+	            UserDto userDto = new UserDto();
+	            userDto.setId(users.get().getId());
+	            userDto.setUsername(users.get().getUsername());
+	            userDto.setEmail(users.get().getEmail());
+	            userDto.setExperience(users.get().getExperience());
+	            userDto.setRepositories(getRepositories(userDto.getId()));
+	            return userDto;
+	        } else {
+	            throw new RuntimeException("User not found");
+	        }
+	    }
+	
+	    public void delete(Users users) {
+	        this.usersRepository.delete(users);
+	    }
+	
+	    public Users getByIdNew(Long id) {
+	        return jdbcTemplate.queryForObject("SELECT * FROM users WHERE id = " + id, new UsersRowMapper());
+	    }
+	
+	    public Users getByNamedParameter(Long id) {
+	        MapSqlParameterSource mapSqlParameterSource = new MapSqlParameterSource().addValue("id", id);
+	        return namedParameterJdbcTemplate.queryForObject("SELECT * FROM users WHERE id = :id",
+	                mapSqlParameterSource, new UsersRowMapper());
+	    }
+	
+	    private List<Repository> getRepositories(Long id) {
+	        List<Repository> repositories = new ArrayList<>();
+	        List<Map<String, Object>> maps =
+	                jdbcTemplate.queryForList("SELECT * FROM repository WHERE user_id = " + id);
+	        for (Map<String, Object> data : maps){
+	            Repository repository = new Repository();
+	            Object oId = data.get("id");
+	            String sId = String.valueOf(oId);
+	            Long lId = Long.parseLong(sId);
+	            repository.setId(lId);
+	            repository.setTitle((String) data.get("title"));
+	            repository.setDescription((String) data.get("description"));
+	            repository.setCode((String) data.get("code"));
+	            repositories.add(repository);
+	        }
+	        return repositories;
+	    }
+	
+	    private static class UsersRowMapper implements RowMapper<Users> {
+	        @Override
+	        public Users mapRow(ResultSet rs, int rowNum) throws SQLException {
+	            Users users = new Users();
+	            users.setId(rs.getLong("id"));
+	            users.setEmail(rs.getString("email"));
+	            users.setUsername(rs.getString("username"));
+	            users.setExperience(rs.getLong("experience"));
+	            return users;
+	        }
+	    }
+	}
+
+ 10. В пакете controllers создаем класс UsersController
+	package ru.sf.jdbc.jdbctemplate.controllers;
+	
+	import lombok.RequiredArgsConstructor;
+	import org.springframework.web.bind.annotation.*;
+	import ru.sf.jdbc.jdbctemplate.entity.UserDto;
+	import ru.sf.jdbc.jdbctemplate.entity.Users;
+	import ru.sf.jdbc.jdbctemplate.service.UserService;
+	
+	@RestController
+	@RequestMapping("/users")
+	@RequiredArgsConstructor
+	public class UsersController {
+	
+	    private final UserService userService;
+	
+	    @RequestMapping(value = "/add", method = RequestMethod.POST)
+	    public void save(@RequestBody Users user) {
+	        userService.save(user);
+	    }
+	
+	    @RequestMapping(value = "/edit", method = RequestMethod.POST)
+	    public void edit(@RequestBody Users user) {
+	        userService.edit(user);
+	    }
+	
+	    @RequestMapping(value = "/get/{id}", method = RequestMethod.GET)
+	    public UserDto getById(@PathVariable(value = "id") Long id) {
+	        return userService.getById(id);
+	    }
+	
+	    @RequestMapping(value = "/get/new/{id}", method = RequestMethod.GET)
+	    public Users getByIdNew(@PathVariable(value = "id") Long id) {
+	        return userService.getByIdNew(id);
+	    }
+	
+	    @RequestMapping(value = "/get/named/{id}", method = RequestMethod.GET)
+	    public Users getByIdNamed(@PathVariable(value = "id") Long id) {return userService.getByNamedParameter(id);}
+	
+	    @RequestMapping(value = "/delete", method = RequestMethod.GET)
+	    public void delete(Users user) {
+	        userService.delete(user);
+	    }
+	}
+
+ 11. В pom.xml добавляем драйвер postgresql
+
+	<!-- https://mvnrepository.com/artifact/org.postgresql/postgresql -->
+	<dependency>
+	    <groupId>org.postgresql</groupId>
+	    <artifactId>postgresql</artifactId>
+	    <version>42.3.4</version>
+	</dependency>
+
+ 12. Создаем базу данных с именем bitbucket и таблицы users и repository
+
+	CREATE TABLE public.users (
+		id serial4 NOT NULL,
+		username varchar(256) NULL,
+		email varchar(256) NULL,
+		experience int4 NULL,
+		CONSTRAINT users_pkey PRIMARY KEY (id)
+	);
+
+	CREATE TABLE public.repository (
+		id serial4 NOT NULL,
+		title varchar(256) NULL,
+		description varchar(2048) NULL,
+		code varchar(2048) NULL,
+		user_id int4 NULL,
+		CONSTRAINT repository_pkey PRIMARY KEY (id),
+		CONSTRAINT repository_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+	);
+
+ 13. В resources/application.properties прописываем свойства
+	server.port=9090
+	spring.datasource.driver-class-name=org.postgresql.Driver
+	spring.datasource.url=jdbc:postgresql://localhost:5432/bitbucket
+	spring.datasource.username=postgres
+	spring.datasource.password=usb19pgs80
+
+ 14. 	Запускаем прогррамму через сборщик idea
+	Запускаем Postman
+	В Postman доступны команды localhost:9090/users/get/1, localhost:9090/users/get/new/1, localhost:9090/users/get/named/1
+
+	Работа программы:
+	Классы Users, UsersDto и Repository это т.н. "сущности"
+	Аннотации @Table(name = "users"), @Column(name = "id") и т.д. задают таблицы и столбцы где эти сущности хранятся в базе данных
+	Т.к. программа запущена на локальной машине обращение идет на localhost
+	Порт 9090 задан в application.properties
+	Все запросы попадают в UsersController т.к. перед классом стоит аннотация @RestController
+	Аннотация @RequestMapping("/users") говорит о том что обращения будут через /users
+	При GET запросе localhost:9090/users/get/1 выполнение попадает в метод 
+
+		public UserDto getById(@PathVariable(value = "id") Long id) {
+                    return userService.getById(id);
+                }
+
+	1 передается в качестве Long параметра
+	Возвращается объект класса UserDto из метода getById объекта userService
+
+	    public UserDto getById(Long id) {
+	        Optional<Users> optionalUsers = usersRepository.findById(id);  <-- здесь неким волщебным образом происходит поиск в базе данных юзера под с id=1
+	        if (optionalUsers.isPresent()) {
+	            Users users = optionalUsers.get();
+	            UserDto userDto = new UserDto();
+	            userDto.setId(users.getId());
+	            userDto.setUsername(users.getUsername());
+	            userDto.setEmail(users.getEmail());
+	            userDto.setExperience(users.getExperience());
+	            userDto.setRepositories(getRepositories(userDto.getId()));
+	            return userDto;
+	        } else {
+	            throw new RuntimeException("User not found");
+	        }
+	    }
+
+	В этом методе происходит вызов метода usersRepository.findById(id)
+	этот метод не прописан, он формируется реализацией JpaRepository<Users, Long>
+	Он возвращает объект класса Users, обернутый в Optional
+	if (users.isPresent()) делает проверку на null
+	Если не null, то извлекаем из optionalUsers объект users класса Users
+	Создаем новый объект userDto класса UserDto
+	Это сущность с полями как у users плюс еще одно поле private List<Repository> repositories;
+	Поля из users копируются в userDto
+	Поле repositories заполняется из метода getRepositories(userDto.getId())
+	
+	    private List<Repository> getRepositories(Long id) {
+	        List<Repository> repositories = new ArrayList<>();
+	        List<Map<String, Object>> maps =
+	                jdbcTemplate.queryForList("SELECT * FROM repository WHERE user_id = " + id);
+	        for (Map<String, Object> data : maps){
+	            Repository repository = new Repository();
+	            Object oId = data.get("id");
+	            String sId = String.valueOf(oId);
+	            Long lId = Long.parseLong(sId);
+	            repository.setId(lId);
+	            repository.setTitle((String) data.get("title"));
+	            repository.setDescription((String) data.get("description"));
+	            repository.setCode((String) data.get("code"));
+	            repositories.add(repository);
+	        }
+	        return repositories;
+	    }
+
+	В этом методе происходит запрос из базы данных используя jdbcTemplate
+
+	|Попробуем переписать UserDto getById(Long id) используя jdbcTemplate
+	|
+	|    public UserDto getById(Long id) {
+	|        Users users = jdbcTemplate.queryForObject("SELECT * FROM users WHERE id = " + id, new UsersRowMapper());
+	|        if (users == null) {
+	|            throw new RuntimeException("User not found");
+	|        } else {
+	|            UserDto userDto = new UserDto();
+	|            userDto.setId(users.getId());
+	|            userDto.setUsername(users.getUsername());
+	|            userDto.setEmail(users.getEmail());
+	|            userDto.setExperience(users.getExperience());
+	|            userDto.setRepositories(getRepositories(userDto.getId()));
+	|            return userDto;
+	|        }
+	|    }
+	|
+	|Все работает, только приходится использовать свой UsersRowMapper()
+	|Надо найти способ генерировать RowMapper из аннотаций в Users...
+
+	Запрос через jdbcTemplate возвращает список мапов по каждому репозиторию у которого совпадает user_id
+	В цикле создаются новые сущности repository, их поля заполняются данными из мапы, сущности заносятся в список
+	Список сущностей repository возвращается и работа переходит обратно к методу getById
+	Метод getById возвращает сущность UserDto и работа переходит к методу getById но уже класса UserService
+	
+	Надо понять где происходит преобразование сущности UserDto в JSON...
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
